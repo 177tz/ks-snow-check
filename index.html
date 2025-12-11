@@ -3,111 +3,127 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>訂單查詢系統</title>
+    <title>訂單配貨查詢系統</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { font-family: "Microsoft JhengHei", sans-serif; }
+    </style>
 </head>
-<body class="bg-gray-100 min-h-screen p-4">
+<body class="bg-gray-50 min-h-screen flex items-center justify-center p-4">
 
-    <div class="max-w-md mx-auto bg-white rounded-xl shadow-md overflow-hidden md:max-w-2xl p-6">
-        <h2 class="text-2xl font-bold text-center text-gray-800 mb-6">📦 1208 KS Snow 訂單查詢</h2>
+    <div class="w-full max-w-md bg-white rounded-xl shadow-lg overflow-hidden p-6">
+        <h2 class="text-2xl font-bold text-center text-gray-800 mb-2">📦 配貨結果查詢</h2>
+        <p class="text-center text-gray-500 text-sm mb-6">請輸入完整的「訂購人名稱」查詢</p>
         
-        <div class="mb-4">
-            <label class="block text-gray-700 text-sm font-bold mb-2" for="searchName">
-                請輸入您的名稱
-            </label>
-            <div class="flex gap-2">
-                <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" 
+        <div class="space-y-4">
+            <div>
+                <label class="block text-gray-700 text-sm font-bold mb-2" for="searchName">
+                    訂購人名稱
+                </label>
+                <input class="w-full border-2 border-gray-200 rounded-lg py-3 px-4 text-gray-700 leading-tight focus:outline-none focus:border-blue-500 transition" 
                        id="searchName" type="text" placeholder="例如：Yuu">
-                <button onclick="searchOrder()" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
-                    查詢
-                </button>
             </div>
+            
+            <button onclick="searchOrder()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg transition duration-200 shadow-md">
+                🔍 立即查詢
+            </button>
         </div>
 
-        <div id="loading" class="hidden text-center py-4 text-gray-500">資料讀取中...</div>
+        <div id="loading" class="hidden mt-6 text-center">
+            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+            <p class="text-gray-500 text-sm mt-2">資料讀取中，請稍候...</p>
+        </div>
 
-        <div id="resultArea" class="space-y-4">
+        <div id="errorMsg" class="hidden mt-4 p-3 bg-red-100 text-red-700 rounded-lg text-sm text-center"></div>
+
+        <div id="resultArea" class="mt-6 space-y-3 hidden">
             </div>
     </div>
 
     <script>
-        // *** 請把這裡換成您剛剛複製的 Google Apps Script 網址 ***
+        // ⚠️⚠️⚠️ 請務必將這裡換成您最新的 Google Apps Script 網址 ⚠️⚠️⚠️
         const API_URL = 'https://script.google.com/macros/s/AKfycbynblO8bLAQGgRHJZwNwF59USAXDk6wrdoVphvXrE4WJeK5TPG4iG2ujk28XEsSEt4xYQ/exec'; 
 
-        let allData = [];
-
-        // 查詢按鈕功能
         function searchOrder() {
-            const inputName = document.getElementById('searchName').value.trim();
+            const input = document.getElementById('searchName');
             const resultArea = document.getElementById('resultArea');
             const loading = document.getElementById('loading');
+            const errorMsg = document.getElementById('errorMsg');
 
-            if (!inputName) {
-                alert("請輸入名稱！");
+            // 1. 取得輸入值並去除前後空白
+            const query = input.value.trim();
+
+            // 重置畫面狀態
+            resultArea.innerHTML = '';
+            resultArea.classList.add('hidden');
+            errorMsg.classList.add('hidden');
+
+            if (!query) {
+                alert("請輸入名稱才能查詢喔！");
                 return;
             }
 
-            resultArea.innerHTML = '';
+            // 顯示讀取中
             loading.classList.remove('hidden');
 
-            // 如果已經抓過資料，就不用再抓一次，直接篩選
-            if (allData.length > 0) {
-                filterAndShow(inputName);
-                return;
-            }
+            // 2. 組合 API 網址 (加上 ?q=名字)
+            // encodeURIComponent 可以處理特殊符號或空格
+            const finalUrl = API_URL + "?q=" + encodeURIComponent(query);
 
-            // 從 Google Sheet 抓資料
-            fetch(API_URL)
+            console.log("正在查詢:", finalUrl); // 方便您在瀏覽器 Console 除錯
+
+            // 3. 發送請求
+            fetch(finalUrl)
                 .then(response => response.json())
                 .then(data => {
-                    allData = data; // 存起來
-                    filterAndShow(inputName);
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    resultArea.innerHTML = '<p class="text-red-500 text-center">讀取失敗，請稍後再試</p>';
-                })
-                .finally(() => {
                     loading.classList.add('hidden');
-                });
-        }
-
-        // 篩選並顯示
-        function filterAndShow(keyword) {
-            const resultArea = document.getElementById('resultArea');
-            const loading = document.getElementById('loading');
-            
-            // 模糊搜尋 (只要包含關鍵字就顯示)
-            const results = allData.filter(item => 
-                item.name.toString().includes(keyword)
-            );
-
-            loading.classList.add('hidden');
-
-            if (results.length === 0) {
-                resultArea.innerHTML = '<p class="text-center text-gray-500">查無此人的訂單資料 🤔</p>';
-                return;
-            }
-
-            // 產生卡片列表
-            let html = '';
-            results.forEach(order => {
-                // 根據配貨結果變更顏色
-                let statusColor = order.status.includes('成功') || order.status.includes('有貨') ? 'text-green-600' : 'text-red-600';
-                
-                html += `
-                    <div class="border-l-4 ${order.status.includes('成功') ? 'border-green-500' : 'border-red-500'} bg-gray-50 p-4 rounded shadow-sm">
-                        <div class="flex justify-between items-start">
-                            <div>
-                                <h3 class="font-bold text-lg text-gray-800">${order.item}</h3>
-                                <p class="text-gray-600 text-sm">數量: ${order.qty}</p>
+                    
+                    // 如果回傳的是空陣列 []
+                    if (data.length === 0) {
+                        resultArea.innerHTML = `
+                            <div class="text-center py-8">
+                                <p class="text-4xl mb-2">🤷‍♂️</p>
+                                <p class="text-gray-600 font-bold">查無資料</p>
+                                <p class="text-gray-400 text-xs mt-1">請確認名稱是否完全正確 (大小寫需一致)</p>
                             </div>
-                            <span class="font-bold ${statusColor}">${order.status}</span>
-                        </div>
-                    </div>
-                `;
-            });
-            resultArea.innerHTML = html;
+                        `;
+                        resultArea.classList.remove('hidden');
+                        return;
+                    }
+
+                    // 4. 顯示結果
+                    let html = '';
+                    data.forEach(order => {
+                        // 判斷狀態顏色
+                        const isSuccess = order.status.includes('成功') || order.status.includes('有貨');
+                        const statusClass = isSuccess ? 'bg-green-100 text-green-800 border-green-200' : 'bg-red-100 text-red-800 border-red-200';
+                        const icon = isSuccess ? '✅' : '❌';
+
+                        html += `
+                            <div class="bg-white border rounded-lg p-4 shadow-sm hover:shadow-md transition">
+                                <div class="flex justify-between items-start mb-2">
+                                    <h3 class="font-bold text-gray-800 text-lg">${order.item}</h3>
+                                    <span class="px-2 py-1 rounded text-xs font-bold border ${statusClass}">
+                                        ${icon} ${order.status}
+                                    </span>
+                                </div>
+                                <div class="flex justify-between text-sm text-gray-500 mt-2 border-t pt-2">
+                                    <span>訂購人：${order.name}</span>
+                                    <span>數量：${order.qty}</span>
+                                </div>
+                            </div>
+                        `;
+                    });
+
+                    resultArea.innerHTML = html;
+                    resultArea.classList.remove('hidden');
+                })
+                .catch(err => {
+                    loading.classList.add('hidden');
+                    console.error("查詢失敗:", err);
+                    errorMsg.textContent = "連線發生錯誤，請稍後再試。";
+                    errorMsg.classList.remove('hidden');
+                });
         }
     </script>
 </body>
